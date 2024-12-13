@@ -36,7 +36,7 @@ interface ApiService {
     @PUT("?action=usuarios")
     @FormUrlEncoded
     fun updateUser(
-        @Field("id") userId: Int,
+        @Query("id") userId: Int,
         @Field("nombre") nombre: String,
         @Field("email") email: String,
         @Field("password") password: String
