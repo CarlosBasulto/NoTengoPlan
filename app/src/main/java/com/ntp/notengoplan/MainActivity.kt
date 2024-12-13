@@ -46,11 +46,56 @@ class MainActivity : ComponentActivity() {
             }
 
             // Renderizar la interfaz
-            UsuarioListScreen(usuarios)
+           // UsuarioListScreen(usuarios)
+
+            // Renderizar la interfaz
+            UsuarioListScreen(usuarios) { usuarioId ->
+                // Eliminar usuario de la lista y llamar a la API
+                usuarios = usuarios.filter { it.id != usuarioId }
+                eliminarUsuarioEnServidor(usuarioId)
+            }
+
+
+        }
+    }
+
+
+    private fun eliminarUsuarioEnServidor(usuarioId: Int) {
+        val api = RetrofitClient.instance.create(ApiService::class.java)
+        api.delUser(usuarioId).enqueue(object : Callback<Void> {
+            override fun onResponse(call: Call<Void>, response: Response<Void>) {
+                if (response.isSuccessful) {
+                    Log.d("API", "Usuario eliminado con éxito")
+                } else {
+                    Log.e("API", "Error al eliminar usuario: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<Void>, t: Throwable) {
+                Log.e("API", "Fallo en la solicitud de eliminación: ${t.message}")
+            }
+        })
+    }
+}
+
+@Composable
+fun UsuarioListScreen(usuarios: List<usuarios>, onDeleteUser: (Int) -> Unit) {
+    MaterialTheme {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(usuarios) { usuario ->
+                UsuarioCard(usuario, onDeleteUser)
+            }
         }
     }
 }
 
+
+/*
 @Composable
 fun UsuarioListScreen(usuarios: List<usuarios>) {
     // Pantalla principal que muestra una lista de usuarios
@@ -65,7 +110,9 @@ fun UsuarioListScreen(usuarios: List<usuarios>) {
         }
     }
 }
+*/
 
+/*
 @Composable
 fun UsuarioCard(usuario: usuarios) {
     Card(
@@ -80,6 +127,35 @@ fun UsuarioCard(usuario: usuarios) {
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(text = "Email: ${usuario.email}", style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}*/
+
+
+@Composable
+fun UsuarioCard(usuario: usuarios, onDeleteUser: (Int) -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "ID: ${usuario.id}", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = "Nombre: ${if (usuario.nombre.isNotBlank()) usuario.nombre else "N/A"}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(text = "Email: ${usuario.email}", style = MaterialTheme.typography.bodyMedium)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Botón de borrar
+            Button(
+                onClick = { onDeleteUser(usuario.id.toInt()) },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Borrar", color = MaterialTheme.colorScheme.onError)
+            }
         }
     }
 }
