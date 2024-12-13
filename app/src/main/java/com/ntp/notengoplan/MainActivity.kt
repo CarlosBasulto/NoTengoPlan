@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import usuarios
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,13 +79,13 @@ class MainActivity : ComponentActivity() {
     }
     private fun editarUsuarioEnServidor(usuario: usuarios) {
         val api = RetrofitClient.instance.create(ApiService::class.java)
-        api.updateUser(usuario.id.toInt(), usuario.nombre, usuario.email, usuario.password)
+        api.updateUser(usuario.id.toInt(), usuario) // Se envía el objeto completo
             .enqueue(object : Callback<Void> {
                 override fun onResponse(call: Call<Void>, response: Response<Void>) {
                     if (response.isSuccessful) {
                         Log.d("API", "Usuario editado con éxito")
                     } else {
-                        Log.e("API", "Error al editar usuario: ${response.code()}")
+                        Log.e("API", "Error al editar usuario: ${response.code()} - ${response.message()}")
                     }
                 }
 
@@ -96,13 +97,13 @@ class MainActivity : ComponentActivity() {
 
     private fun añadirUsuarioEnServidor(usuario: usuarios) {
         val api = RetrofitClient.instance.create(ApiService::class.java)
-        api.addUser(usuario.nombre, usuario.email, usuario.password)
+        api.addUser(usuario) // Se envía el objeto completo
             .enqueue(object : Callback<Void> {
                 override fun onResponse(call: Call<Void>, response: Response<Void>) {
                     if (response.isSuccessful) {
                         Log.d("API", "Usuario añadido con éxito")
                     } else {
-                        Log.e("API", "Error al añadir usuario: ${response.code()}")
+                        Log.e("API", "Error al añadir usuario: ${response.code()} - ${response.message()}")
                     }
                 }
 
@@ -153,11 +154,16 @@ fun UsuarioListScreen(
     onEditUser: (usuarios) -> Unit,
     onAddUser: (usuarios) -> Unit
 ) {
+    // Estado para mostrar el formulario de añadir/editar
+    var showForm by remember { mutableStateOf(false) }
+    var editingUser by remember { mutableStateOf<usuarios?>(null) }
+
     MaterialTheme {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             Button(
                 onClick = {
-                   // onAddUser(usuarios(0, "Nuevo", "nuevo@email.com", "12345"))
+                    editingUser = null // Restablece para añadir un nuevo usuario
+                    showForm = true
                 },
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
             ) {
@@ -171,12 +177,92 @@ fun UsuarioListScreen(
                     UsuarioCard(
                         usuario = usuario,
                         onDeleteUser = onDeleteUser,
-                        onEditUser = onEditUser
+                        onEditUser = {
+                            editingUser = it // Carga el usuario en edición
+                            showForm = true
+                        }
                     )
                 }
             }
         }
     }
+
+    if (showForm) {
+        UsuarioForm(
+            usuario = editingUser,
+            onDismiss = { showForm = false },
+            onSubmit = { nuevoUsuario ->
+                if (editingUser == null) {
+                    onAddUser(nuevoUsuario)
+                } else {
+                    onEditUser(nuevoUsuario)
+                }
+                showForm = false
+            }
+        )
+    }
+}
+
+@Composable
+fun UsuarioForm(
+    usuario: usuarios?,
+    onDismiss: () -> Unit,
+    onSubmit: (usuarios) -> Unit
+) {
+    var nombre by remember { mutableStateOf(usuario?.nombre ?: "") }
+    var email by remember { mutableStateOf(usuario?.email ?: "") }
+    var password by remember { mutableStateOf(usuario?.password ?: "") }
+
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text(if (usuario == null) "Añadir Usuario" else "Editar Usuario") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextField(
+                    value = nombre,
+                    onValueChange = { nombre = it },
+                    label = { Text("Nombre") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                TextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                TextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Contraseña") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSubmit(
+                        usuario?.clone(
+                            nombre = nombre,
+                            email = email,
+                            password = password
+                        ) ?: usuarios().clone(
+                            nombre = nombre,
+                            email = email,
+                            password = password
+                        )
+                    )
+                }
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            Button(onClick = { onDismiss() }) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 
