@@ -1,26 +1,89 @@
 package com.ntp.notengoplan
 
+
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.shape.CircleShape
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Configura el contenido con Jetpack Compose
         setContent {
-            MyComposeApp()
+            // Estado para almacenar usuarios
+            var usuarios by remember { mutableStateOf<List<usuarios>>(emptyList()) }
+
+            // Llamar a la API
+            LaunchedEffect(Unit) {
+                val api = RetrofitClient.instance.create(ApiService::class.java)
+                api.getUserS().enqueue(object : Callback<List<usuarios>> {
+                    override fun onResponse(
+                        call: Call<List<usuarios>>,
+                        response: Response<List<usuarios>>
+                    ) {
+                        if (response.isSuccessful) {
+                            usuarios = response.body() ?: emptyList()
+                        } else {
+                            Log.e("API", "Error: ${response.code()}")
+                        }
+                    }
+
+                    override fun onFailure(call: Call<List<usuarios>>, t: Throwable) {
+                        Log.e("API", "Fallo en la solicitud: ${t.message}")
+                    }
+                })
+            }
+
+            // Renderizar la interfaz
+            UsuarioListScreen(usuarios)
         }
     }
 }
+
+@Composable
+fun UsuarioListScreen(usuarios: List<usuarios>) {
+    // Pantalla principal que muestra una lista de usuarios
+    MaterialTheme {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(usuarios) { usuario ->
+                UsuarioCard(usuario)
+            }
+        }
+    }
+}
+
+@Composable
+fun UsuarioCard(usuario: usuarios) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "ID: ${usuario.id}", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = "Nombre: ${if (usuario.nombre.isNotBlank()) usuario.nombre else "N/A"}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(text = "Email: ${usuario.email}", style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
 
 @Composable
 fun MyComposeApp() {
@@ -32,15 +95,13 @@ fun MyComposeApp() {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
             MyMaterialButton()
             MyTextField()
             MyCard()
             AssistChipExample()
             VerticalDividerExample()
-            RoundButtonExample(onClick = {
-                // Acción al hacer clic en el botón
-                println("Botón redondo presionado")
-            })
+
         }
     }
 }
@@ -85,21 +146,7 @@ fun MyMaterialButton() {
     }
 }
 
-@Composable
-fun RoundButtonExample(onClick: () -> Unit) {
-    Button(
-        onClick = { onClick() },
-        shape = CircleShape, // Forma redonda completa
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-        modifier = Modifier.size(56.dp) // Asegura que sea cuadrado para mantener la forma redonda
-    ) {
-        Text(
-            text = "OK",
-           // color ="",
-            style = MaterialTheme.typography.bodyMedium
-        )
-    }
-}
+
 
 @Composable
 fun MyTextField() {
