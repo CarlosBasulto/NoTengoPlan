@@ -49,16 +49,68 @@ class MainActivity : ComponentActivity() {
            // UsuarioListScreen(usuarios)
 
             // Renderizar la interfaz
-            UsuarioListScreen(usuarios) { usuarioId ->
+          /*  UsuarioListScreen(usuarios) { usuarioId ->
                 // Eliminar usuario de la lista y llamar a la API
                 usuarios = usuarios.filter { it.id != usuarioId }
                 eliminarUsuarioEnServidor(usuarioId)
             }
+*/
+
+
+
+            UsuarioListScreen(
+                usuarios = usuarios,
+                onDeleteUser = { usuarioId ->
+                    usuarios = usuarios.filter { it.id != usuarioId }
+                    eliminarUsuarioEnServidor(usuarioId)
+                },
+                onEditUser = { usuario ->
+                    editarUsuarioEnServidor(usuario) // Implementa tu lógica
+                },
+                onAddUser = { nuevoUsuario ->
+                    usuarios = usuarios + nuevoUsuario
+                    añadirUsuarioEnServidor(nuevoUsuario) // Implementa tu lógica
+                }
+            )
 
 
         }
     }
+    private fun editarUsuarioEnServidor(usuario: usuarios) {
+        val api = RetrofitClient.instance.create(ApiService::class.java)
+        api.updateUser(usuario.id.toInt(), usuario.nombre, usuario.email, usuario.password)
+            .enqueue(object : Callback<Void> {
+                override fun onResponse(call: Call<Void>, response: Response<Void>) {
+                    if (response.isSuccessful) {
+                        Log.d("API", "Usuario editado con éxito")
+                    } else {
+                        Log.e("API", "Error al editar usuario: ${response.code()}")
+                    }
+                }
 
+                override fun onFailure(call: Call<Void>, t: Throwable) {
+                    Log.e("API", "Fallo al editar usuario: ${t.message}")
+                }
+            })
+    }
+
+    private fun añadirUsuarioEnServidor(usuario: usuarios) {
+        val api = RetrofitClient.instance.create(ApiService::class.java)
+        api.addUser(usuario.nombre, usuario.email, usuario.password)
+            .enqueue(object : Callback<Void> {
+                override fun onResponse(call: Call<Void>, response: Response<Void>) {
+                    if (response.isSuccessful) {
+                        Log.d("API", "Usuario añadido con éxito")
+                    } else {
+                        Log.e("API", "Error al añadir usuario: ${response.code()}")
+                    }
+                }
+
+                override fun onFailure(call: Call<Void>, t: Throwable) {
+                    Log.e("API", "Fallo al añadir usuario: ${t.message}")
+                }
+            })
+    }
 
     private fun eliminarUsuarioEnServidor(usuarioId: Int) {
         val api = RetrofitClient.instance.create(ApiService::class.java)
@@ -77,7 +129,7 @@ class MainActivity : ComponentActivity() {
         })
     }
 }
-
+/*
 @Composable
 fun UsuarioListScreen(usuarios: List<usuarios>, onDeleteUser: (Int) -> Unit) {
     MaterialTheme {
@@ -89,6 +141,39 @@ fun UsuarioListScreen(usuarios: List<usuarios>, onDeleteUser: (Int) -> Unit) {
         ) {
             items(usuarios) { usuario ->
                 UsuarioCard(usuario, onDeleteUser)
+            }
+        }
+    }
+}*/
+
+@Composable
+fun UsuarioListScreen(
+    usuarios: List<usuarios>,
+    onDeleteUser: (Int) -> Unit,
+    onEditUser: (usuarios) -> Unit,
+    onAddUser: (usuarios) -> Unit
+) {
+    MaterialTheme {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Button(
+                onClick = {
+                   // onAddUser(usuarios(0, "Nuevo", "nuevo@email.com", "12345"))
+                },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            ) {
+                Text("Añadir Usuario")
+            }
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                items(usuarios) { usuario ->
+                    UsuarioCard(
+                        usuario = usuario,
+                        onDeleteUser = onDeleteUser,
+                        onEditUser = onEditUser
+                    )
+                }
             }
         }
     }
@@ -133,6 +218,48 @@ fun UsuarioCard(usuario: usuarios) {
 
 
 @Composable
+fun UsuarioCard(
+    usuario: usuarios,
+    onDeleteUser: (Int) -> Unit,
+    onEditUser: (usuarios) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "ID: ${usuario.id}", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = "Nombre: ${if (usuario.nombre.isNotBlank()) usuario.nombre else "N/A"}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(text = "Email: ${usuario.email}", style = MaterialTheme.typography.bodyMedium)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { onEditUser(usuario) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Text("Editar")
+                }
+
+                Button(
+                    onClick = { onDeleteUser(usuario.id.toInt()) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Borrar")
+                }
+            }
+        }
+    }
+}
+
+
+/*
+@Composable
 fun UsuarioCard(usuario: usuarios, onDeleteUser: (Int) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -160,7 +287,7 @@ fun UsuarioCard(usuario: usuarios, onDeleteUser: (Int) -> Unit) {
     }
 }
 
-
+*/
 @Composable
 fun MyComposeApp() {
     MaterialTheme {
